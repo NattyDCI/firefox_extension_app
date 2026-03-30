@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Abstract Bauhaus Time Tracker",
+  "version": "1.0.0",
+  "description": "Tracks time spent on websites and shows it as a Bauhaus-style clock.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Abstract Bauhaus Time Tracker",
+    "default_icon": {
+      "48": "icon.png"
+    }
+  },
+  "icons": {
+    "48": "icon.png"
+  }
+}
