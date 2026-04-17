@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- Character encoding for proper text rendering -->
+  <meta charset="utf-8">
+
+  <!-- Title shown in browser dev tools / extension context -->
+  <title>Abstract Bauhaus Tracker</title>
+
+  <!-- Main stylesheet for layout + Bauhaus styling -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+  <!-- ===== HEADER / TITLE ===== -->
+  <!-- Split title allows styling different parts (color, font, emphasis) -->
+  <h2 id="ext">
+    FOCUS<span id="tensionTitle">Evity </span>tracker
+  </h2>
+
+  <!-- ===== STATUS LABELS ===== -->
+  <!-- These are dynamically updated by popup.js -->
+
+  <!-- Live session time (resets when switching tabs) -->
+  <div id="sessionLabel">Session: 00:00:00</div>
+
+    <!-- Current active site -->
+  <div id="siteLabel">Site: No active site</div>
+    <!--date label -->
+  <div id="dateLabel">Today · --</div>
+ 
+
+
+  <!-- ===== CANVAS CONTAINER ===== -->
+  <!-- p5.js injects the canvas here -->
+  <!-- The clock visualization is rendered inside this div -->
+  <div id="canvas-holder"></div>
+
+  <!-- ===== ACTION BUTTONS ===== -->
+
+  <!-- Resets stored time for the current site -->
+  <button id="reset">Reset this site</button>
+
+  <!-- Shows detailed log of today's tracked time -->
+  <button id="showTodayLog">Show today's log</button>
+
+  <!-- ===== LOADING INDICATOR ===== -->
+  <!-- Hidden by default, shown while logs are loading -->
+  <div id="logProgress" class="log-progress hidden">
+    <div class="log-progress-bar"></div>
+  </div>
+
+  <!-- ===== LOG OUTPUT ===== -->
+  <!-- Displays today's log data when requested -->
+  <!-- Uses <pre> to preserve formatting -->
+  <pre id="todayLogOutput"></pre>
+
+  <!-- ===== SCRIPTS ===== -->
+
+  <!-- p5.js library (handles canvas drawing) -->
+  <script src="p5.min.js"></script>
+
+  <!-- Handles data logic, communication with background script, and UI updates -->
+  <script src="popup.js"></script>
+
+  <!-- Handles all visual rendering (Bauhaus clock) -->
+  <script src="popup-sketch.js"></script>
+
+</body>
+</html>

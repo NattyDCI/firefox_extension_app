@@ -1,128 +1,206 @@
-  * {
-    margin: 0;
+/* Reset default browser margin to avoid unwanted spacing */
+* {
+  margin: 0;
+}
+
+/* ===== CUSTOM FONTS ===== */
+/* These fonts define the visual identity (Bauhaus-inspired typography) */
+
+@font-face {
+  font-family: "NotoSansCustom";
+  src: url("../font/NotoSans_Condensed-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "OswaldCustom";
+  src: url("../font/Oswald-Medium.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "OswaldCustom";
+  src: url("../font/Oswald-Bold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "BricolageCustom";
+  src: url("../font/BricolageGrotesque_36pt-ExtraBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* ===== TITLES / HEADLINES ===== */
+/* Strong visual hierarchy using bold type and Bauhaus colors */
+
+#ext {
+  font-family: "OswaldCustom";
+  font-size: 30px;
+  color: #e30404;
+  font-weight: 800;
+  -webkit-text-stroke: 1px #111;
+}
+
+#tensionTitle {
+  font-family: "OswaldCustom";
+  font-size: 30px;
+  color: #fbe711;
+  font-weight: 600;
+}
+
+/* Center container (used for button layout if needed) */
+#contenedor-boton {
+  text-align: center;
+}
+
+/* ===== LOADING / PROGRESS BAR ===== */
+/* Animated bar used when loading logs */
+
+.log-progress {
+  width: 100%;
+  height: 10px;
+  margin: 10px 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.log-progress.hidden {
+  display: none;
+}
+
+.log-progress-bar {
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: black;
+  animation: slideBar 1s infinite ease-in-out;
+}
+
+@keyframes slideBar {
+  0% {
+    transform: translateX(-100%);
   }
-
-  body {
-    background: radial-gradient(circle at 50% 30%, #FF6600 0%, #331100 25%, #000000 75%);
-    color: #F3F1FF;
-    overflow: hidden;
+  50% {
+    transform: translateX(150%);
   }
-
-  #capa-carga {
-    position: fixed;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 25px;
-    z-index: 10;
-   
+  100% {
+    transform: translateX(300%);
   }
+}
 
-  #tarjeta-carga {
-    position: relative;
-    width: 640px;
-    padding: 26px 20px;
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.8);
-    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
-    text-align: center;
-    
-  }
+/* ===== LOG OUTPUT ===== */
 
-  #slider {
-    width: 100%;
-  }
+#todayLogOutput {
+  display: none;
+  white-space: pre-wrap;
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.4;
+}
 
-  #progreso-informacion {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
-    color: #F3F1FF;
-    font-weight: 650;
-  }
+/* ===== BASE LAYOUT ===== */
 
-  #contenedor-boton {
-    text-align: center;
-  }
+body {
+  width: 300px;
+  margin: 0;
+  padding: 12px;
+  font-family: "BricolageCustom";
+  background: #f5f2e8;
+  color: #111;
+  box-sizing: border-box;
+}
 
-  button {
-    cursor: pointer;
-    display: inline-block;
-    font-weight: bold;
-    text-align: center;
-    white-space: nowrap;
-    vertical-align: middle;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    border: 1px solid transparent;
-    padding: .375rem .75rem;
-    font-size: 1rem;
-    line-height: 1.5;
-    border-radius: .25rem;
-    color: #000000;
-    background-color: #FF6600;
-    border-color: #FF6600;
-    margin-bottom: 25px;
-    transition: 300ms;
-  }
+/* Apply consistent typography across main UI elements */
+body,
+button,
+h2,
+#siteLabel,
+#dateLabel,
+#summaryLabel {
+  font-family: "BricolageCustom", sans-serif;
+  font-weight: 800;
+}
 
-  button:hover {
-    background-color: #6454E3;
-    border-color: #6454E3;
-  }
+/* Main title */
+h2 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  line-height: 1.1;
+}
 
-  /* https://cssloaders.github.io/ */
-  #loader {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    display: block;
-    position: relative;
-    border: 3px solid;
-    border-color: #FFF #FFF transparent;
-    box-sizing: border-box;
-    animation: rotation 1s linear infinite;
-    margin: auto;
-    margin-bottom: 25px;
-  }
+/* ===== TOP LABELS ===== */
 
-  #loader::after {
-    content: '';
-    box-sizing: border-box;
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    margin: auto;
-    border: 3px solid;
-    border-color: transparent #FF6600 #FF6600;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    animation: rotationBack 0.5s linear infinite;
-    transform-origin: center center;
-  }
+#siteLabel,
+#dateLabel,
+#summaryLabel {
+  margin: 4px 0;
+  font-size: 13px;
+}
 
-  @keyframes rotation {
-    0% {
-      transform: rotate(0deg);
-    }
+/* Current site label */
+#siteLabel {
+  font-weight: bold;
+  word-break: break-word;
+}
 
-    100% {
-      transform: rotate(360deg);
-    }
-  }
+/* Date line */
+#dateLabel {
+  font-size: 12px;
+}
 
-  @keyframes rotationBack {
-    0% {
-      transform: rotate(0deg);
-    }
+/* Summary sentence */
+#summaryLabel {
+  font-size: 12px;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
 
-    100% {
-      transform: rotate(-360deg);
-    }
-  }
+/* ===== CANVAS CONTAINER ===== */
+/* Holds the p5.js clock */
+
+#canvas-holder {
+  width: 220px;
+  height: 320px;
+  margin: 12px auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: #f5f2e8;
+}
+
+/* Prevent canvas from behaving like inline element */
+canvas {
+  display: block;
+}
+
+/* ===== BUTTONS ===== */
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 10px;
+  background: #ff8fab;
+  color: #111;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* ===== DEBUG PANEL ===== */
+
+#debugOutput {
+  max-height: 140px;
+  overflow: auto;
+  font-size: 10px;
+  white-space: pre-wrap;
+  background: #eee;
+  padding: 8px;
+  margin-top: 10px;
+  border-radius: 8px;
+}

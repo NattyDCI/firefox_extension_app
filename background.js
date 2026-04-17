@@ -1,12 +1,24 @@
-const STATE_KEY = "__tracker_state__";
-const TIME_PREFIX = "time:";
+// quick check so I know the background script actually loaded
+console.log("loaded background.js");
 
-// Builds the storage key for one domain
-function timeKey(domain) {
-  return `${TIME_PREFIX}${domain}`;
+// storage keys
+// STATE_KEY = what's currently being tracked live
+// LOGS_KEY = accumulated time per day / per domain
+const STATE_KEY = "__tracker_state__";
+const LOGS_KEY = "__tracker_logs__";
+
+// build a day key like 2026-04-17
+// this lets me group saved time by day
+function getDayKey(timestamp = Date.now()) {
+  const d = new Date(timestamp);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
-// Extract domain from URL
+// get just the hostname from a URL
+// only regular web pages should count
 function getDomain(url) {
   try {
     const u = new URL(url);
@@ -19,7 +31,8 @@ function getDomain(url) {
   }
 }
 
-// Read current tracking state
+// current live tracking state
+// if nothing exists yet, start with an empty state object
 async function getState() {
   const result = await browser.storage.local.get(STATE_KEY);
   return result[STATE_KEY] || {
@@ -29,51 +42,75 @@ async function getState() {
   };
 }
 
-// Save current tracking state
+// save current live state
 async function setState(state) {
   await browser.storage.local.set({
     [STATE_KEY]: state
   });
 }
 
-// Get saved total time for one domain
-async function getSavedTime(domain) {
+// read the full saved log object
+// structure is basically logs[dayKey][domain] = timeInMs
+async function getLogs() {
+  const result = await browser.storage.local.get(LOGS_KEY);
+  return result[LOGS_KEY] || {};
+}
+
+// save updated logs back into storage
+async function setLogs(logs) {
+  await browser.storage.local.set({
+    [LOGS_KEY]: logs
+  });
+}
+
+// get saved total for one domain on one day
+async function getSavedTimeForDay(domain, dayKey = getDayKey()) {
   if (!domain) return 0;
 
-  const key = timeKey(domain);
-  const result = await browser.storage.local.get(key);
-  return result[key] || 0;
+  const logs = await getLogs();
+  return logs[dayKey]?.[domain] || 0;
 }
 
-// Add elapsed time to one domain
-async function saveTimeForDomain(domain, ms) {
+// add elapsed time to a domain for the correct day
+async function saveTimeForDomain(domain, ms, timestamp = Date.now()) {
   if (!domain || ms <= 0) return;
 
-  const key = timeKey(domain);
-  const previous = await getSavedTime(domain);
+  const dayKey = getDayKey(timestamp);
+  const logs = await getLogs();
+
+  // create the day bucket if it doesn't exist yet
+  if (!logs[dayKey]) {
+    logs[dayKey] = {};
+  }
+
+  const previous = logs[dayKey][domain] || 0;
   const updated = previous + ms;
+  logs[dayKey][domain] = updated;
 
-  await browser.storage.local.set({
-    [key]: updated
-  });
+  await setLogs(logs);
 
-  console.log("Saved time:", { domain, ms, previous, updated });
+  console.log("Saved time:", { dayKey, domain, ms, previous, updated });
 }
 
-// Save current session before switching away
+// save the current live session before leaving it
+// this happens when switching tabs, closing tab, losing browser focus, etc.
 async function saveCurrentSession() {
   const state = await getState();
 
+  // nothing active, nothing to save
   if (!state.activeDomain || state.sessionStart === null) {
     return;
   }
 
-  const elapsed = Date.now() - state.sessionStart;
+  const now = Date.now();
+  const elapsed = now - state.sessionStart;
 
+  // only save valid positive time
   if (elapsed > 0) {
-    await saveTimeForDomain(state.activeDomain, elapsed);
+    await saveTimeForDomain(state.activeDomain, elapsed, now);
   }
 
+  // clear live tracking state after saving
   await setState({
     activeTabId: null,
     activeDomain: null,
@@ -81,20 +118,20 @@ async function saveCurrentSession() {
   });
 }
 
-// Start tracking a tab
+// start tracking the currently active tab
 async function startTrackingTab(tab) {
   if (!tab) return;
 
   const domain = getDomain(tab.url);
   const oldState = await getState();
 
-  // Ignore non-website tabs
+  // if it's not a normal website tab, stop tracking the old one
   if (!domain) {
     await saveCurrentSession();
     return;
   }
 
-  // If already tracking the same tab/domain, do nothing
+  // if we're already tracking this exact tab/domain, do nothing
   if (
     oldState.activeTabId === tab.id &&
     oldState.activeDomain === domain &&
@@ -103,16 +140,17 @@ async function startTrackingTab(tab) {
     return;
   }
 
-  // Save old tracked session before switching
+  // before switching, save whatever was being tracked before
   if (oldState.activeDomain && oldState.sessionStart !== null) {
-    const elapsed = Date.now() - oldState.sessionStart;
+    const now = Date.now();
+    const elapsed = now - oldState.sessionStart;
 
     if (elapsed > 0) {
-      await saveTimeForDomain(oldState.activeDomain, elapsed);
+      await saveTimeForDomain(oldState.activeDomain, elapsed, now);
     }
   }
 
-  // Start fresh live session
+  // start a new live session from now
   await setState({
     activeTabId: tab.id,
     activeDomain: domain,
@@ -122,7 +160,7 @@ async function startTrackingTab(tab) {
   console.log("Now tracking:", domain);
 }
 
-// Get active tab from last-focused browser window
+// get the active tab from the window the user is actually focused on
 async function getCurrentActiveTab() {
   const tabs = await browser.tabs.query({
     active: true,
@@ -132,7 +170,7 @@ async function getCurrentActiveTab() {
   return tabs[0] || null;
 }
 
-// When user changes tab
+// user switched tabs
 browser.tabs.onActivated.addListener(async ({ tabId }) => {
   try {
     const tab = await browser.tabs.get(tabId);
@@ -142,7 +180,8 @@ browser.tabs.onActivated.addListener(async ({ tabId }) => {
   }
 });
 
-// When active tab finishes loading a new page
+// active tab finished loading
+// useful when the same tab changes URL
 browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   try {
     if (tab.active && changeInfo.status === "complete") {
@@ -153,7 +192,9 @@ browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   }
 });
 
-// When browser loses or regains focus
+// browser focus changed
+// if the browser loses focus completely, save current session
+// when focus comes back, resume tracking on the active tab
 browser.windows.onFocusChanged.addListener(async (windowId) => {
   try {
     if (windowId === browser.windows.WINDOW_ID_NONE) {
@@ -168,7 +209,7 @@ browser.windows.onFocusChanged.addListener(async (windowId) => {
   }
 });
 
-// When tracked tab closes
+// tracked tab got closed
 browser.tabs.onRemoved.addListener(async (tabId) => {
   try {
     const state = await getState();
@@ -181,60 +222,73 @@ browser.tabs.onRemoved.addListener(async (tabId) => {
   }
 });
 
-// Handle popup messages
-browser.runtime.onMessage.addListener(async (message) => {
+// popup talks to background through these messages
+browser.runtime.onMessage.addListener((message) => {
+  // send current popup stats:
+  // domain, live session time, and total time today
   if (message.type === "GET_POPUP_STATS") {
-    const state = await getState();
-    const domain = state.activeDomain || "";
-    const saved = domain ? await getSavedTime(domain) : 0;
-    const live =
-      state.sessionStart !== null ? Date.now() - state.sessionStart : 0;
+    return (async () => {
+      const state = await getState();
+      const domain = state.activeDomain || "";
+      const saved = domain ? await getSavedTimeForDay(domain) : 0;
+      const live =
+        state.sessionStart !== null ? Date.now() - state.sessionStart : 0;
 
-    return {
-      domain,
-      sessionMs: live,
-      totalMs: saved + live
-    };
+      return {
+        domain,
+        sessionMs: live,
+        totalMs: saved + live
+      };
+    })();
   }
 
+  // send all entries for one day
+  // if popup doesn't send a day, use today
+  if (message.type === "GET_DAY_LOG") {
+    return (async () => {
+      const logs = await getLogs();
+      const dayKey = message.dayKey || getDayKey();
+
+      return {
+        dayKey,
+        entries: logs[dayKey] || {}
+      };
+    })();
+  }
+
+  // reset current site's saved total for today
+  // also restart the live session from zero
   if (message.type === "RESET_CURRENT_DOMAIN") {
-    const state = await getState();
+    return (async () => {
+      const state = await getState();
 
-    if (!state.activeDomain) {
-      return { ok: false };
-    }
+      if (!state.activeDomain) {
+        return { ok: false };
+      }
 
-    await browser.storage.local.set({
-      [timeKey(state.activeDomain)]: 0
-    });
+      const dayKey = getDayKey();
+      const logs = await getLogs();
 
-    await setState({
-      activeTabId: state.activeTabId,
-      activeDomain: state.activeDomain,
-      sessionStart: Date.now()
-    });
+      if (!logs[dayKey]) {
+        logs[dayKey] = {};
+      }
 
-    return { ok: true };
+      logs[dayKey][state.activeDomain] = 0;
+      await setLogs(logs);
+
+      await setState({
+        activeTabId: state.activeTabId,
+        activeDomain: state.activeDomain,
+        sessionStart: Date.now()
+      });
+
+      return { ok: true };
+    })();
   }
 
-  if (message.type === "GET_DEBUG_STORAGE") {
-    return await browser.storage.local.get(null);
-  }
-
-  if (message.type === "CLEAN_OLD_KEYS") {
-    const all = await browser.storage.local.get(null);
-
-    const keysToRemove = Object.keys(all).filter((key) => {
-      return key !== STATE_KEY && !key.startsWith(TIME_PREFIX);
-    });
-
-    if (keysToRemove.length > 0) {
-      await browser.storage.local.remove(keysToRemove);
-    }
-
-    return { removed: keysToRemove };
-  }
+  return false;
 });
 
-// Initialize when extension starts
+// when the extension starts, immediately check what's active
+// and begin tracking from there
 getCurrentActiveTab().then(startTrackingTab).catch(console.error);
